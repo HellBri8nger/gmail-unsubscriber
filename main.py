@@ -147,7 +147,6 @@ def mark_as_spam(service, mail_ids):
             # modified_labels = {'removeLabelIds': current_labels, 'addLabelIds': ['SPAM']}
             modified_labels = {'removeLabelIds': current_labels}  # comment this line if you uncommented the above line
 
-            # Modify the labels using the users.messages.modify method
             service.users().messages().modify(userId='me', id=mail_ids[i], body=modified_labels).execute()
             bar()
 
