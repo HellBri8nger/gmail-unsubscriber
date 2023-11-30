@@ -9,18 +9,10 @@ from googleapiclient.discovery import build
 from alive_progress import alive_bar
 from selenium import webdriver
 from datetime import datetime
-from icecream import ic
-import logging
+import traceback
 import os.path
 
-
-logging.basicConfig(
-   level=logging.CRITICAL,
-   format="%(asctime)s %(levelname)s %(message)s",
-   datefmt="%Y-%m-%d_%H-%M-%S",
-   filename=datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".log"
-)
-
+log = open(f'{datetime.now().strftime("%Y%m%d_%H%M%S")}.log', 'w', encoding='utf-8')
 SCOPES = ["https://mail.google.com/"]
 final_list = []
 
@@ -49,17 +41,16 @@ def get_service():
         return service
 
     except HttpError as error:
-        # TODO(developer) - Handle errors from gmail API.
         print(f"An error occurred: {error}")
+        log.write(traceback.format_exc())
 
 
 def get_mail_ids(service, user_id, search_string):
     try:
         print('[Gathering mail IDs please wait]')
-        search_id = service.users().messages().list(userId=user_id, q=search_string, labelIds=['INBOX'],
+        search_id = service.users().messages().list(userId=user_id,
+                                                    q=search_string, labelIds=['INBOX'],
                                                     maxResults=500).execute()
-
-        # ic(search_id)
 
         if search_id['resultSizeEstimate'] > 0:
             id_gatherer(search_id)
@@ -70,8 +61,8 @@ def get_mail_ids(service, user_id, search_string):
                 with alive_bar() as bar:
                     while True:
                         try:
-                            search_id = service.users().messages().list(userId=user_id, q=search_string, maxResults=500,
-                                                                        labelIds=['INBOX'],
+                            search_id = service.users().messages().list(userId=user_id, q=search_string,
+                                                                        labelIds=['INBOX'], maxResults=500,
                                                                         pageToken=next_page_token).execute()
 
                             id_gatherer(search_id)
@@ -84,45 +75,29 @@ def get_mail_ids(service, user_id, search_string):
 
                         except HttpError as error:
                             print(error)
-                            logging.error(error)
+                            log.write(traceback.format_exc())
                     bar()
 
         else:
-            ic('Found 0 mails')
-            input()
+            print('Found 0 mails')
+            log.write('Found 0 mails')
 
     except HttpError as error:
-        ic(f'An error occurred {error}')
-        logging.error(error)
+        print(f'An error occurred {error}')
+        log.write(traceback.format_exc())
 
 
 def id_gatherer(search_id):
     global final_list
 
-    for ids in search_id['messages']:
-        final_list.append(ids['id'])
-
-
-def get_next_page(service, next_page_token):
-    search_id = service.users().messages().list(userId='me', pageToken=next_page_token, maxResults=500,
-                                                labelIds=['INBOX']).execute()
-
-    if search_id['resultSizeEstimate'] > 0:
-        try:
-            next_page_token = search_id['nextPageToken']
-
-        except KeyError as error:
-            next_page_token = None
-
-        final_list = []
+    try:
         for ids in search_id['messages']:
             final_list.append(ids['id'])
 
-        # ic(final_list)
-        return final_list, next_page_token
-    else:
-        ic('Found 0 mails')
-        return None, None
+    except KeyError as error:
+        print(search_id)
+        print(traceback.format_exc())
+        log.write(traceback.format_exc())
 
 
 def mark_as_spam(service, mail_ids):
@@ -136,13 +111,15 @@ def mark_as_spam(service, mail_ids):
         for i in range(len(mail_ids)):
             message = service.users().messages().get(userId='me', id=mail_ids[i], format='metadata').execute()
             current_labels = message['labelIds']
-            from_and_link = []
 
             for j in range(len(message['payload']['headers'])):
 
                 header_dict = message['payload']['headers'][j]
+                if header_dict['name'] == 'From':
+                    log.write(f'in {i} From: {header_dict["value"]} \n')
+                    log.flush()
 
-                # Extracts out the unsubscribe link if there is one and appends it to a link
+                # Extracts out the unsubscribe link and opens the link in browser
                 if header_dict['name'] == 'List-Unsubscribe':
                     unsubscribe_link = header_dict['value'].split(',')
                     if len(unsubscribe_link) > 1:
@@ -151,13 +128,24 @@ def mark_as_spam(service, mail_ids):
 
                         for k in unsubscribe_link:
                             if k.startswith('http'):
+                                log.write(f'in {i}: {k} \n')
+                                log.flush()
                                 driver.get(k)
+                    else:
+                        unsubscribe_link[0] = unsubscribe_link[0][1:-1]
+                        if unsubscribe_link[0].startswith('http'):
+                            log.write(f'in {i}: {unsubscribe_link[0]} \n')
+                            log.flush()
+                            driver.get(unsubscribe_link[0])
 
                     break
 
-                logging.info(from_and_link)
+            log.write('-'*20 + '\n')
+            log.flush()
 
-            modified_labels = {'removeLabelIds': current_labels}
+            # uncomment this line if you want your messages to be marked as spam
+            # modified_labels = {'removeLabelIds': current_labels, 'addLabelIds': ['SPAM']}
+            modified_labels = {'removeLabelIds': current_labels}  # comment this line if you uncommented the above line
 
             # Modify the labels using the users.messages.modify method
             service.users().messages().modify(userId='me', id=mail_ids[i], body=modified_labels).execute()
@@ -167,3 +155,4 @@ def mark_as_spam(service, mail_ids):
 get_mail_ids(get_service(), 'me', 'unsubscribe')
 
 mark_as_spam(get_service(), final_list)
+log.close()

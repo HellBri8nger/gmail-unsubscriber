@@ -1,0 +1,6 @@
+webdriver_manager
+google-auth-oauthlib
+selenium
+google-auth
+google-api-python-client
+alive-progress
