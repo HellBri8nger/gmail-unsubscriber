@@ -141,9 +141,6 @@ def mark_as_spam(service, mail_ids):
             for j in range(len(message['payload']['headers'])):
 
                 header_dict = message['payload']['headers'][j]
-                if header_dict['name'] == 'From':
-                    print(f'From: {header_dict["value"]}')
-                    from_and_link.append(header_dict['value'])
 
                 # Extracts out the unsubscribe link if there is one and appends it to a link
                 if header_dict['name'] == 'List-Unsubscribe':
@@ -155,15 +152,11 @@ def mark_as_spam(service, mail_ids):
                         for k in unsubscribe_link:
                             if k.startswith('http'):
                                 driver.get(k)
-                                # from_and_link.append(k)
+
                     break
 
                 logging.info(from_and_link)
 
-            print('-'*20)
-
-            # Remove existing labels and add the "SPAM" label
-            # modified_labels = {'removeLabelIds': current_labels, 'addLabelIds': ['SPAM']}
             modified_labels = {'removeLabelIds': current_labels}
 
             # Modify the labels using the users.messages.modify method
@@ -172,19 +165,5 @@ def mark_as_spam(service, mail_ids):
 
 
 get_mail_ids(get_service(), 'me', 'unsubscribe')
-ic(len(final_list))
 
-# ic(count_duplicates(final_list))
 mark_as_spam(get_service(), final_list)
-
-# message = get_service().users().messages().get(userId='me', id=final_list[5000], format='metadata').execute()
-# print(message)
-# for i in range(len(message['payload']['headers'])):
-#
-#     header_dict = message['payload']['headers'][i]
-#
-#     if header_dict['name'] == 'From':
-#         print(f'From: {header_dict["value"]}')
-#
-#     if header_dict['name'] == 'List-Unsubscribe':
-#         print(f'Unsubscribe:  {header_dict["value"]}')
