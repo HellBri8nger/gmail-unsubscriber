@@ -105,6 +105,7 @@ def mark_as_spam(service, mail_ids):
 
     options = Options()
     options.add_argument("--headless")
+    options.add_argument("log-level=3")
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
     with alive_bar(len(mail_ids)) as bar:
@@ -140,7 +141,7 @@ def mark_as_spam(service, mail_ids):
 
                     break
 
-            log.write('-'*20 + '\n')
+            log.write('-' * 20 + '\n')
             log.flush()
 
             # uncomment this line if you want your messages to be marked as spam
