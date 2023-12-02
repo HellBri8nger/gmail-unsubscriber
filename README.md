@@ -18,7 +18,7 @@ To get started with Gmail Unsubscriber, follow these steps:
 ```commandline
 pip install -r requirements.txt
 ```
-4.**Run the Project**: Run the main.py file.
+4.**Run the Project**: Run the main.py file It will prompt you to select a gmail account select one, and It'll get to work.
 
 
 ## How It Works

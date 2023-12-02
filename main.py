@@ -9,25 +9,25 @@ from googleapiclient.discovery import build
 from alive_progress import alive_bar
 from selenium import webdriver
 from datetime import datetime
+from enums import SCOPES
 import traceback
 import os.path
 
 log = open(f'{datetime.now().strftime("%Y%m%d_%H%M%S")}.log', 'w', encoding='utf-8')
-SCOPES = ["https://mail.google.com/"]
 final_list = []
 
 
 def get_service():
     creds = None
     if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES.SCOPES)
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
-                "credentials.json", SCOPES
+                "credentials.json", SCOPES.SCOPES
             )
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
@@ -41,7 +41,6 @@ def get_service():
         return service
 
     except HttpError as error:
-        print(f"An error occurred: {error}")
         log.write(traceback.format_exc())
 
 
@@ -74,7 +73,6 @@ def get_mail_ids(service, user_id, search_string):
                                 break
 
                         except HttpError as error:
-                            print(error)
                             log.write(traceback.format_exc())
                     bar()
 
@@ -83,7 +81,6 @@ def get_mail_ids(service, user_id, search_string):
             log.write('Found 0 mails')
 
     except HttpError as error:
-        print(f'An error occurred {error}')
         log.write(traceback.format_exc())
 
 
@@ -95,8 +92,6 @@ def id_gatherer(search_id):
             final_list.append(ids['id'])
 
     except KeyError as error:
-        print(search_id)
-        print(traceback.format_exc())
         log.write(traceback.format_exc())
 
 
