@@ -9,6 +9,7 @@ from googleapiclient.discovery import build
 from alive_progress import alive_bar
 from selenium import webdriver
 from datetime import datetime
+from logger import Logger
 from enums import SCOPES
 import traceback
 import os.path
@@ -40,7 +41,7 @@ class GmailService:
             return service
 
         except HttpError as error:
-            log.write(traceback.format_exc())
+            Logger.log_writer(traceback.format_exc())
 
 
 class MailFetcher:
@@ -74,15 +75,15 @@ class MailFetcher:
                                     break
 
                             except HttpError as error:
-                                log.write(traceback.format_exc())
+                                Logger.log_writer(traceback.format_exc())
                         bar()
 
             else:
                 print('Found 0 mails')
-                log.write('Found 0 mails')
+                Logger.log_writer('Found 0 mails')
 
         except HttpError as error:
-            log.write(traceback.format_exc())
+            Logger.log_writer(traceback.format_exc())
 
     @staticmethod
     def id_gatherer(search_id):
@@ -93,7 +94,7 @@ class MailFetcher:
                 final_list.append(ids['id'])
 
         except KeyError as error:
-            log.write(traceback.format_exc())
+            Logger.log_writer(traceback.format_exc())
 
 
 class MailArchiver:
@@ -115,8 +116,7 @@ class MailArchiver:
 
                     header_dict = message['payload']['headers'][j]
                     if header_dict['name'] == 'From':
-                        log.write(f'in {i} From: {header_dict["value"]} \n')
-                        log.flush()
+                        Logger.log_writer(f'in {i} From: {header_dict["value"]} \n')
 
                     # Extracts out the unsubscribe link and opens the link in browser
                     if header_dict['name'] == 'List-Unsubscribe':
@@ -127,34 +127,31 @@ class MailArchiver:
 
                             for k in unsubscribe_link:
                                 if k.startswith('http'):
-                                    log.write(f'in {i}: {k} \n')
-                                    log.flush()
+                                    Logger.log_writer(f'in {i}: {k} \n')
                                     driver.get(k)
                         else:
                             unsubscribe_link[0] = unsubscribe_link[0][1:-1]
                             if unsubscribe_link[0].startswith('http'):
-                                log.write(f'in {i}: {unsubscribe_link[0]} \n')
-                                log.flush()
+                                Logger.log_writer(f'in {i}: {unsubscribe_link[0]} \n')
                                 driver.get(unsubscribe_link[0])
 
                         break
 
-                log.write('-' * 20 + '\n')
-                log.flush()
+                Logger.log_writer('-' * 20 + '\n')
 
                 # uncomment this line if you want your messages to be marked as spam
                 # modified_labels = {'removeLabelIds': current_labels, 'addLabelIds': ['SPAM']}
                 modified_labels = {'removeLabelIds': current_labels}  # comment this line if you uncommented the above line
 
-                # service.users().messages().modify(userId='me', id=mail_ids[i], body=modified_labels).execute()
+                service.users().messages().modify(userId='me', id=mail_ids[i], body=modified_labels).execute()
                 bar()
 
 
 if __name__ == '__main__':
-    log = open(f'{datetime.now().strftime("%Y%m%d_%H%M%S")}.log', 'w', encoding='utf-8')
-    final_list = []
+    Logger.create_log()  # Remove this line if you don't want logging
 
+    final_list = []
     MailFetcher.get_mail_ids(GmailService.get_service(), 'me', 'Unsubscribe')
 
     MailArchiver.mark_as_spam(GmailService.get_service(), final_list)
-    log.close()
+    Logger.close_log()

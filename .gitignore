@@ -2,3 +2,4 @@ test.py
 credentials.json
 token.json
 logs/
+__pycache__/
