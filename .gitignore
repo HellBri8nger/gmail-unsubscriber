@@ -1,5 +1,4 @@
-./GetMail/getMail.py
 test.py
 credentials.json
 token.json
-./logs
+logs/
