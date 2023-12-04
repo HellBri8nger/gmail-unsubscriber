@@ -16,7 +16,7 @@ class Logger:
             Logger.log.close()
 
     @staticmethod
-    def log_writer(value):
+    def write_to_log(value):
         if Logger.logger_status:
             Logger.log.write(value)
             Logger.log.flush()
