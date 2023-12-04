@@ -111,8 +111,8 @@ class MailFetcher:
             return excluded_mails
 
         except IndexError as error:
-            Logger.write_to_log(traceback.format_exc())
-            raise
+            excluded_mails['noValue'] = True
+            Logger.write_to_log('No mails inside exclude.txt')
 
 
 class MailArchiver:
