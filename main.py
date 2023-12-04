@@ -41,7 +41,7 @@ class GmailService:
             return service
 
         except HttpError as error:
-            Logger.log_writer(traceback.format_exc())
+            Logger.write_to_log(traceback.format_exc())
 
 
 class MailFetcher:
@@ -75,15 +75,15 @@ class MailFetcher:
                                     break
 
                             except HttpError as error:
-                                Logger.log_writer(traceback.format_exc())
+                                Logger.write_to_log(traceback.format_exc())
                         bar()
 
             else:
                 print('Found 0 mails')
-                Logger.log_writer('Found 0 mails')
+                Logger.write_to_log('Found 0 mails')
 
         except HttpError as error:
-            Logger.log_writer(traceback.format_exc())
+            Logger.write_to_log(traceback.format_exc())
 
     @staticmethod
     def id_gatherer(search_id):
@@ -94,12 +94,30 @@ class MailFetcher:
                 final_list.append(ids['id'])
 
         except KeyError as error:
-            Logger.log_writer(traceback.format_exc())
+            Logger.write_to_log(traceback.format_exc())
+
+    @staticmethod
+    def get_excluded_mails():  # Parses all the mails inside exclude.txt and returns a dictionary
+        excluded_mails = {}
+        try:
+            with open('exclude.txt', 'r') as f:
+                lines = f.readlines()
+                s1 = slice(0, -1)
+                for line in range(len(lines) - 1):
+                    excluded_mails[lines[line][s1]] = True
+
+                excluded_mails[lines[-1]] = True
+
+            return excluded_mails
+
+        except IndexError as error:
+            Logger.write_to_log(traceback.format_exc())
+            raise
 
 
 class MailArchiver:
     @staticmethod
-    def mark_as_spam(service, mail_ids):
+    def mark_as_archived(service, mail_ids):
         print(f'[Archiving {len(mail_ids)} mails]')
 
         options = Options()
@@ -107,6 +125,8 @@ class MailArchiver:
         options.add_argument("log-level=3")
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
+        sender_address = ''
+        excluded_mails = MailFetcher.get_excluded_mails()
         with alive_bar(len(mail_ids)) as bar:
             for i in range(len(mail_ids)):
                 message = service.users().messages().get(userId='me', id=mail_ids[i], format='metadata').execute()
@@ -116,32 +136,43 @@ class MailArchiver:
 
                     header_dict = message['payload']['headers'][j]
                     if header_dict['name'] == 'From':
-                        Logger.log_writer(f'in {i} From: {header_dict["value"]} \n')
-
-                    # Extracts out the unsubscribe link and opens the link in browser
-                    if header_dict['name'] == 'List-Unsubscribe':
-                        unsubscribe_link = header_dict['value'].split(',')
-                        if len(unsubscribe_link) > 1:
-                            unsubscribe_link[0] = unsubscribe_link[0][1:-1]
-                            unsubscribe_link[1] = unsubscribe_link[1][2:-1]
-
-                            for k in unsubscribe_link:
-                                if k.startswith('http'):
-                                    Logger.log_writer(f'in {i}: {k} \n')
-                                    driver.get(k)
-                        else:
-                            unsubscribe_link[0] = unsubscribe_link[0][1:-1]
-                            if unsubscribe_link[0].startswith('http'):
-                                Logger.log_writer(f'in {i}: {unsubscribe_link[0]} \n')
-                                driver.get(unsubscribe_link[0])
-
+                        sender_address = header_dict['value'].split('<')
+                        sender_address = sender_address[1][0:-1]
+                        Logger.write_to_log(f'in {i} From: {header_dict["value"]} \n')
                         break
 
-                Logger.log_writer('-' * 20 + '\n')
+                if sender_address not in excluded_mails:
+                    for j in range(len(message['payload']['headers'])):
+                        header_dict = message['payload']['headers'][j]
+
+                        # Extracts out the unsubscribe link and opens the link in browser
+                        if header_dict['name'] == 'List-Unsubscribe':
+                            unsubscribe_link = header_dict['value'].split(',')
+                            if len(unsubscribe_link) > 1:
+                                unsubscribe_link[0] = unsubscribe_link[0][1:-1]
+                                unsubscribe_link[1] = unsubscribe_link[1][2:-1]
+
+                                for k in unsubscribe_link:
+                                    if k.startswith('http'):
+                                        Logger.write_to_log(f'in {i}: {k} \n')
+                                        driver.get(k)
+                            else:
+                                unsubscribe_link[0] = unsubscribe_link[0][1:-1]
+                                if unsubscribe_link[0].startswith('http'):
+                                    Logger.write_to_log(f'in {i}: {unsubscribe_link[0]} \n')
+                                    driver.get(unsubscribe_link[0])
+
+                            break
+
+                else:
+                    Logger.write_to_log(f'[Excluded]: {sender_address} \n')
+
+                Logger.write_to_log('-' * 20 + '\n')
 
                 # uncomment this line if you want your messages to be marked as spam
                 # modified_labels = {'removeLabelIds': current_labels, 'addLabelIds': ['SPAM']}
-                modified_labels = {'removeLabelIds': current_labels}  # comment this line if you uncommented the above line
+                modified_labels = {
+                    'removeLabelIds': current_labels}  # comment this line if you uncommented the above line
 
                 service.users().messages().modify(userId='me', id=mail_ids[i], body=modified_labels).execute()
                 bar()
@@ -153,5 +184,5 @@ if __name__ == '__main__':
     final_list = []
     MailFetcher.get_mail_ids(GmailService.get_service(), 'me', 'Unsubscribe')
 
-    MailArchiver.mark_as_spam(GmailService.get_service(), final_list)
+    MailArchiver.mark_as_archived(GmailService.get_service(), final_list)
     Logger.close_log()
