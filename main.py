@@ -99,15 +99,20 @@ class MailFetcher:
     @staticmethod
     def get_excluded_mails():  # Parses all the mails inside exclude.txt and returns a dictionary
         excluded_mails = {}
-        with open('exclude.txt', 'r') as f:
-            lines = f.readlines()
-            s1 = slice(0, -1)
-            for line in range(len(lines) - 1):
-                excluded_mails[lines[line][s1]] = True
+        try:
+            with open('exclude.txt', 'r') as f:
+                lines = f.readlines()
+                s1 = slice(0, -1)
+                for line in range(len(lines) - 1):
+                    excluded_mails[lines[line][s1]] = True
 
-            excluded_mails[lines[-1]] = True
+                excluded_mails[lines[-1]] = True
 
-        return excluded_mails
+            return excluded_mails
+
+        except IndexError as error:
+            Logger.write_to_log(traceback.format_exc())
+            raise
 
 
 class MailArchiver:
@@ -139,6 +144,7 @@ class MailArchiver:
                 if sender_address not in excluded_mails:
                     for j in range(len(message['payload']['headers'])):
                         header_dict = message['payload']['headers'][j]
+
                         # Extracts out the unsubscribe link and opens the link in browser
                         if header_dict['name'] == 'List-Unsubscribe':
                             unsubscribe_link = header_dict['value'].split(',')
@@ -165,7 +171,8 @@ class MailArchiver:
 
                 # uncomment this line if you want your messages to be marked as spam
                 # modified_labels = {'removeLabelIds': current_labels, 'addLabelIds': ['SPAM']}
-                modified_labels = {'removeLabelIds': current_labels}  # comment this line if you uncommented the above line
+                modified_labels = {
+                    'removeLabelIds': current_labels}  # comment this line if you uncommented the above line
 
                 service.users().messages().modify(userId='me', id=mail_ids[i], body=modified_labels).execute()
                 bar()
