@@ -112,7 +112,7 @@ class MailFetcher:
 
         except IndexError as error:
             excluded_mails['noValue'] = True
-            Logger.write_to_log('No mails inside exclude.txt')
+            Logger.write_to_log('exclude.txt is empty')
 
 
 class MailArchiver:
