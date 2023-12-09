@@ -1,3 +1,4 @@
+import selenium.common
 from webdriver_manager.chrome import ChromeDriverManager
 from google_auth_oauthlib.flow import InstalledAppFlow
 from selenium.webdriver.chrome.service import Service
@@ -112,7 +113,7 @@ class MailFetcher:
 
         except IndexError as error:
             excluded_mails['noValue'] = True
-            Logger.write_to_log('exclude.txt is empty')
+            Logger.write_to_log('exclude.txt is empty \n')
             return excluded_mails
 
 
@@ -165,7 +166,10 @@ class MailArchiver:
                                 unsubscribe_link[0] = unsubscribe_link[0][1:-1]
                                 if unsubscribe_link[0].startswith('http'):
                                     Logger.write_to_log(f'in {i}: {unsubscribe_link[0]} \n')
-                                    driver.get(unsubscribe_link[0])
+                                    try:
+                                        driver.get(unsubscribe_link[0])
+                                    except selenium.common.WebDriverException as error:
+                                        Logger.write_to_log(f'Unable to load {unsubscribe_link[0]} \n')
 
                             break
 
