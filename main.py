@@ -123,7 +123,7 @@ class MailArchiver:
 
         options = Options()
         options.add_argument("--headless")
-        options.add_argument("log-level=3")
+        options.add_argument("--log-level=3")
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
         sender_address = ''
