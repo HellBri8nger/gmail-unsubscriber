@@ -161,7 +161,10 @@ class MailArchiver:
                                 for k in unsubscribe_link:
                                     if k.startswith('http'):
                                         Logger.write_to_log(f'in {i}: {k} \n')
-                                        driver.get(k)
+                                        try:
+                                            driver.get(k)
+                                        except selenium.common.WebDriverException as error:
+                                            Logger.write_to_log(f'Unable to load {unsubscribe_link[0]} \n')
                             else:
                                 unsubscribe_link[0] = unsubscribe_link[0][1:-1]
                                 if unsubscribe_link[0].startswith('http'):
