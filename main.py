@@ -1,3 +1,4 @@
+import selenium.common
 from webdriver_manager.chrome import ChromeDriverManager
 from google_auth_oauthlib.flow import InstalledAppFlow
 from selenium.webdriver.chrome.service import Service
@@ -112,7 +113,8 @@ class MailFetcher:
 
         except IndexError as error:
             excluded_mails['noValue'] = True
-            Logger.write_to_log('No mails inside exclude.txt')
+            Logger.write_to_log('exclude.txt is empty \n')
+            return excluded_mails
 
 
 class MailArchiver:
@@ -122,7 +124,7 @@ class MailArchiver:
 
         options = Options()
         options.add_argument("--headless")
-        options.add_argument("log-level=3")
+        options.add_argument("--log-level=3")
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
         sender_address = ''
@@ -137,7 +139,11 @@ class MailArchiver:
                     header_dict = message['payload']['headers'][j]
                     if header_dict['name'] == 'From':
                         sender_address = header_dict['value'].split('<')
-                        sender_address = sender_address[1][0:-1]
+                        if len(sender_address) > 1:
+                            sender_address = sender_address[1][0:-1]
+                        else:
+                            sender_address = sender_address[0][0:-1]
+
                         Logger.write_to_log(f'in {i} From: {header_dict["value"]} \n')
                         break
 
@@ -160,7 +166,10 @@ class MailArchiver:
                                 unsubscribe_link[0] = unsubscribe_link[0][1:-1]
                                 if unsubscribe_link[0].startswith('http'):
                                     Logger.write_to_log(f'in {i}: {unsubscribe_link[0]} \n')
-                                    driver.get(unsubscribe_link[0])
+                                    try:
+                                        driver.get(unsubscribe_link[0])
+                                    except selenium.common.WebDriverException as error:
+                                        Logger.write_to_log(f'Unable to load {unsubscribe_link[0]} \n')
 
                             break
 
