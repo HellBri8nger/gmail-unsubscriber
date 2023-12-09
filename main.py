@@ -138,7 +138,11 @@ class MailArchiver:
                     header_dict = message['payload']['headers'][j]
                     if header_dict['name'] == 'From':
                         sender_address = header_dict['value'].split('<')
-                        sender_address = sender_address[1][0:-1]
+                        if len(sender_address) > 1:
+                            sender_address = sender_address[1][0:-1]
+                        else:
+                            sender_address = sender_address[0][0:-1]
+
                         Logger.write_to_log(f'in {i} From: {header_dict["value"]} \n')
                         break
 
